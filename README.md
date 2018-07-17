@@ -1,5 +1,9 @@
 ![knoxville zoning](images/zoning-colors-trimmed.png)
 
+**All issues and contributions should be done on
+[Gitlab](https://gitlab.com/costrouc/knoxville-opendata-notebooks). Github
+is used only as a mirror due to LFS issues**
+
 # Knoxville OpenData Notebooks
 
 I wanted to create some parsers on the data that knoxville provides
@@ -88,9 +92,11 @@ Here are some the data sources listed on the [knoxville open data website](http:
 All contributions, bug reports, bug fixes, documentation improvements,
 enhancements and ideas are welcome! If you are storing any data files
 with the commit make sure to use
-[LFS](https://git-lfs.github.com/). Keep in mind the [strict
-limits](https://help.github.com/articles/about-storage-and-bandwidth-usage/)
-Github has on free LFS.
+[LFS](https://git-lfs.github.com/). These should be submitted at the
+[Gitlab
+repository](https://gitlab.com/costrouc/knoxville-opendata-notebooks). Github
+is only used for visibility. This is becuase Github has strict limits
+on LFS.
 
 # License
 
