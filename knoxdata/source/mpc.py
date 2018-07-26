@@ -1,8 +1,10 @@
 import json
 from collections import defaultdict
+import sqlite3
 
 import requests
 import pandas as pd
+import numpy as np
 
 
 def get_and_write_mpc_data():
@@ -18,8 +20,9 @@ def get_and_write_mpc_data():
 
     print(len(latitudes), len(longitudes), 'total queries', len(latitudes) * len(longitudes))
     # Caching will be very usefull (but request_cache doesn't work.......)
+    conn = sqlite3.connect('../data/mpc/mpc.sqlite3')
 
-    geo_data = {}
+    geo_data = set()
     session = requests.session()
     session.get('https://www.kgis.org/maps/MPCCases.html') # get cookies
 
@@ -27,25 +30,37 @@ def get_and_write_mpc_data():
         for longitude in longitudes:
             if (latitude, longitude) in geo_data:
                 continue
-            geo_data[(latitude, longitude)] = query_mpc_inventory(latitude, longitude, query_area, session)
-
-    geo_pd_data = defaultdict(list)
-    for coord, data in geo_data.items():
-        for url, values in data.items():
-            if values is not None:
-                geo_pd_data[url].append(values)
-
-    df_data = {}
-    for url in geo_pd_data:
-        df = pd.concat(geo_pd_data[url]).drop_duplicates()
-        df_data[url] = df
-        striped_url = url.remove('/')
-        df.to_csv('../data/mpc/%s.csv' % striped_url)
-
-    return df_data
+            query_mpc_inventory(latitude, longitude, query_area, session, conn)
+            geo_data.add((latitude, longitude))
 
 
-def query_mpc_inventory(latitude, longitude, area_square, session):
+def insert_df_into_table(conn, table_name, df):
+    df1 = df.reset_index()
+    column_names = ', '.join(['"%s"' % name for name in df1.columns])
+    fields = ','.join(['?'] * len(df1.columns))
+    replace_str = 'REPLACE INTO "%s" (%s) VALUES (%s)' % (table_name, column_names, fields)
+
+    with conn as c:
+        c.executemany(replace_str, df1.values.tolist())
+
+
+def create_table_from_df(conn, table_name, df):
+    dtype_conversion = {
+        np.float64: 'REAL',
+        np.object_: 'TEXT',
+        np.int64: 'INTEGER'
+    }
+
+    table_schema = []
+    table_schema.append('"%s" %s PRIMARY KEY NOT NULL' % (df.index.name, dtype_conversion[df.index.dtype.type]))
+    for name, t in zip(df.columns, df.dtypes):
+        table_schema.append('"%s" %s' % (name, dtype_conversion[t.type]))
+
+    with conn as c:
+        c.execute('CREATE TABLE IF NOT EXISTS "%s" (%s)' % (table_name, ', '.join(table_schema)))
+
+
+def query_mpc_inventory(latitude, longitude, area_square, session, conn):
     query = {
         'returnGeometry': True,
         'spatialRel': 'esriSpatialRelIntersects',
@@ -79,7 +94,6 @@ def query_mpc_inventory(latitude, longitude, area_square, session):
         'https://www.kgis.org/arcgis/rest/services/Maps/TelecommTowers/MapServer/%d/query?f': (0,),
     }
 
-    data = {}
     for partial_url, indicies in data_sources.items():
         for i in indicies:
             url = partial_url % (i)
@@ -92,10 +106,9 @@ def query_mpc_inventory(latitude, longitude, area_square, session):
                 for row in response_json['features']:
                     url_data.append({'geometry': json.dumps(row['geometry']), **row['attributes']})
                 if url_data:
-                    data[url] = pd.DataFrame(url_data).set_index('OBJECTID')
-                else:
-                    data[url] = None
+                    df = pd.DataFrame(url_data).set_index('OBJECTID')
+                    create_table_from_df(conn, url, df)
+                    insert_df_into_table(conn, url, df)
             except Exception:
+                print(response.content)
                 print('failed for url: ', url)
-                data[url] = None
-    return data
