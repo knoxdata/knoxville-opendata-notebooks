@@ -19,3 +19,4 @@ dependencies:
     - requests-cache
     - geopandas
     - camelot-py
+    - opencv-python
