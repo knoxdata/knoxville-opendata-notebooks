@@ -1,9 +1,5 @@
 ![knoxville zoning](images/zoning-colors-trimmed.png)
 
-**All issues and contributions should be done on
-[Gitlab](https://gitlab.com/costrouc/knoxville-opendata-notebooks). Github
-is used only as a mirror due to LFS issues**
-
 # Knoxville OpenData Notebooks
 
 I wanted to create some parsers on the data that knoxville provides
